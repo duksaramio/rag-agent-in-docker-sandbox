@@ -12,9 +12,37 @@ An enterprise-grade **Pydantic AI Retrieval-Augmented Generation (RAG) agent** r
 
 ## 🚀 Execution Modes
 
-### Mode A: Run Agent Sandbox with Existing Host Containers (Recommended)
+### Mode 1: Docker Sandboxes CLI (`sbx create` & `sbx run`)
 
-If Qdrant (`:6333`), RustFS (`:9100`), Langfuse (`:3000`), and Ollama (`:11434`) are already running on your host machine:
+For interactive management inside the **Docker Sandboxes (`sbx`) Dashboard & TUI**:
+
+1. Create the sandbox:
+   ```bash
+   sbx create --name rag-agent-sbx -p 8000:8000 shell .
+   ```
+
+2. Run or attach to the interactive agent sandbox:
+   ```bash
+   sbx run --name rag-agent-sbx
+   ```
+
+3. Launch the RAG agent API server inside the sandbox:
+   ```bash
+   sbx exec rag-agent-sbx python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+   ```
+
+4. View active sandboxes in the `sbx` dashboard:
+   ```bash
+   sbx ls
+   # or interactive dashboard:
+   sbx tui
+   ```
+
+---
+
+### Mode 2: Docker Compose (`docker compose up -d`)
+
+If Qdrant (`:6333`), RustFS (`:9100`), Langfuse (`:3000`), and Ollama (`:11434`) are running on your host machine:
 
 1. Configure `.env`:
    ```env
@@ -39,28 +67,9 @@ If Qdrant (`:6333`), RustFS (`:9100`), Langfuse (`:3000`), and Ollama (`:11434`)
    LANGFUSE_HOST=http://localhost:3000
    ```
 
-2. Build and start **only the agent sandbox container**:
+2. Start the containerized agent sandbox:
    ```bash
    docker compose up -d --build rag-agent
-   ```
-
----
-
-### Mode B: Spin Up Full Infrastructure Stack
-
-To launch all infrastructure services in Docker from scratch:
-
-1. Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-2. Start all containers:
-   ```bash
-   docker compose up -d --build
-   ```
-3. Pull the Ollama embedding model:
-   ```bash
-   docker exec -it ollama-embedding-server ollama pull qwen3-embedding:8b
    ```
 
 ---
@@ -70,7 +79,7 @@ To launch all infrastructure services in Docker from scratch:
 To upload sample GxP Standard Operating Procedures (SOPs) into RustFS S3 (`gxp-docs` bucket) and index vector embeddings into Qdrant using Ollama `qwen3-embedding:8b`:
 
 ```bash
-docker exec pydantic-ai-rag-agent python scripts/seed_gxp_docs.py
+python scripts/seed_gxp_docs.py
 ```
 
 ---
@@ -135,7 +144,7 @@ curl -X POST http://localhost:8000/query \
                      1. Upload / Fetch
                               v
 +-----------------------------+-----------------------------+
-|               Pydantic AI Agent (Docker Sandbox)          |
+|        Pydantic AI Agent (Docker Sandbox / sbx)           |
 |                   (app.main / app.agent)                  |
 +--------------+------------------------------+-------------+
                |                              |
