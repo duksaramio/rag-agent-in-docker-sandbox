@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Any
 from qdrant_client.models import PointStruct
-from langfuse.decorators import observe
+from langfuse import observe
 
 from app.s3_client import s3_service
 from app.embeddings import embedding_service

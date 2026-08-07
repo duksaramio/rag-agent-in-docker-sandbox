@@ -1,7 +1,6 @@
 import os
 import logging
-from langfuse import Langfuse
-from langfuse.decorators import observe
+from langfuse import Langfuse, observe
 from app.config import settings
 
 logger = logging.getLogger(__name__)
