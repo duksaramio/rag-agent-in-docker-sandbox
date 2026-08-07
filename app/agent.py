@@ -2,8 +2,9 @@ import logging
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.openai import OpenAIModel
-from langfuse.decorators import observe
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
+from langfuse import observe
 
 from app.config import settings
 from app.embeddings import embedding_service
@@ -13,10 +14,13 @@ from app.s3_client import s3_service
 logger = logging.getLogger(__name__)
 
 # Initialize OpenAI-compatible DeepSeek V4 Flash Model
-deepseek_model = OpenAIModel(
-    model_name=settings.llm_model,
+provider = OpenAIProvider(
     base_url=settings.openai_base_url,
     api_key=settings.openai_api_key
+)
+deepseek_model = OpenAIChatModel(
+    model_name=settings.llm_model,
+    provider=provider
 )
 
 # Output Schema
@@ -38,7 +42,7 @@ Guidelines:
 
 gxp_agent = Agent(
     model=deepseek_model,
-    result_type=GxPResponse,
+    output_type=GxPResponse,
     system_prompt=SYSTEM_PROMPT
 )
 
@@ -90,6 +94,6 @@ class AgentRunner:
         """Run Pydantic AI agent against user prompt with Langfuse observability."""
         logger.info(f"Executing Pydantic AI Agent for query: '{user_prompt}'")
         result = gxp_agent.run_sync(user_prompt)
-        return result.data
+        return result.output
 
 agent_runner = AgentRunner()

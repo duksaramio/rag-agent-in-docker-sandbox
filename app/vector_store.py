@@ -41,20 +41,20 @@ class QdrantVectorStore:
     def search_similar(self, query_vector: List[float], top_k: int = 5) -> List[Dict[str, Any]]:
         """Search Qdrant collection for vectors nearest to query_vector."""
         self.ensure_collection(vector_size=len(query_vector))
-        results = self.client.search(
+        res = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_vector,
+            query=query_vector,
             limit=top_k
         )
         hits = []
-        for res in results:
+        for point in res.points:
             hits.append({
-                "id": res.id,
-                "score": res.score,
-                "content": res.payload.get("content", ""),
-                "document_name": res.payload.get("document_name", ""),
-                "chunk_index": res.payload.get("chunk_index", 0),
-                "s3_key": res.payload.get("s3_key", "")
+                "id": point.id,
+                "score": point.score if hasattr(point, 'score') else 0.0,
+                "content": point.payload.get("content", ""),
+                "document_name": point.payload.get("document_name", ""),
+                "chunk_index": point.payload.get("chunk_index", 0),
+                "s3_key": point.payload.get("s3_key", "")
             })
         return hits
 

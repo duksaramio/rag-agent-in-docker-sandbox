@@ -8,7 +8,10 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingService:
     def __init__(self):
-        self.base_url = settings.ollama_base_url.rstrip("/")
+        base_url = settings.ollama_base_url.rstrip("/")
+        if base_url.endswith("/v1"):
+            base_url = base_url[:-3]
+        self.base_url = base_url
         self.model_name = settings.embedding_model
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
