@@ -1,0 +1,154 @@
+version: '3.8'
+
+services:
+  # 1. Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:v1.9.2
+    container_name: qdrant-vector-db
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. RustFS (S3 Compatible Object Server)
+  rustfs:
+    image: minio/minio:RELEASE.2024-04-18T19-09-19Z
+    container_name: rustfs-s3-server
+    entrypoint: sh
+    command: -c 'minio server /data --address ":9100" --console-address ":9001"'
+    ports:
+      - "9100:9100"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - rustfs_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9100/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. Langfuse Observability Suite
+  langfuse-db:
+    image: postgres:15-alpine
+    container_name: langfuse-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: langfuse
+    ports:
+      - "5432:5432"
+    volumes:
+      - langfuse_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  langfuse-redis:
+    image: redis:7-alpine
+    container_name: langfuse-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  langfuse-server:
+    image: langfuse/langfuse:2
+    container_name: langfuse-server
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+      langfuse-redis:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgrespassword@langfuse-db:5432/langfuse
+      - NEXTAUTH_SECRET=my-super-secret-nextauth-key-12345
+      - SALT=my-super-secret-salt-12345
+      - NEXTAUTH_URL=http://localhost:3000
+      - TELEMETRY_ENABLED=false
+      - LANGFUSE_INIT_ORG_ID=org-gxp
+      - LANGFUSE_INIT_ORG_NAME=GxP Quality Org
+      - LANGFUSE_INIT_PROJECT_ID=proj-gxp-rag
+      - LANGFUSE_INIT_PROJECT_NAME=GxP RAG Agent
+      - LANGFUSE_INIT_USER_EMAIL=admin@gxp.local
+      - LANGFUSE_INIT_USER_PASSWORD=adminpassword123
+      - LANGFUSE_INIT_PROJECT_PUBLIC_KEY=pk-lf-1234567890
+      - LANGFUSE_INIT_PROJECT_SECRET_KEY=sk-lf-1234567890
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 4. Ollama Service (Local Embedding Model qwen3-embedding:8b)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-embedding-server
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 5. Pydantic AI RAG Agent Container (Docker Sandbox)
+  rag-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pydantic-ai-rag-agent
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - S3_ENDPOINT_URL=http://rustfs:9100
+      - S3_ACCESS_KEY_ID=minioadmin
+      - S3_SECRET_ACCESS_KEY=minioadmin
+      - S3_BUCKET_NAME=gxp-docs
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - EMBEDDING_MODEL=qwen3-embedding:8b
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.deepseek.com/v1}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy-key}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-v4-flash}
+      - LANGFUSE_HOST=http://langfuse-server:3000
+      - LANGFUSE_PUBLIC_KEY=pk-lf-1234567890
+      - LANGFUSE_SECRET_KEY=sk-lf-1234567890
+    volumes:
+      - .:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  qdrant_data:
+  rustfs_data:
+  langfuse_db_data:
+  ollama_data:
