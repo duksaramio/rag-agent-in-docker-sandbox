@@ -10,34 +10,52 @@ An enterprise-grade **Pydantic AI Retrieval-Augmented Generation (RAG) agent** r
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Execution Modes
 
-### 1. Configure Environment Variables
-Copy `.env.example` to `.env` and set your API keys:
-```bash
-cp .env.example .env
-```
-Ensure your `.env` contains your OpenAI / DeepSeek endpoint credentials:
-```env
-OPENAI_BASE_URL=https://api.deepseek.com/v1
-OPENAI_API_KEY=your-api-key-here
-LLM_MODEL=deepseek-v4-flash
-```
+### Mode A: Run Agent Sandbox with Existing Host Containers (Recommended if services are already running)
 
-### 2. Launch Services with Docker Compose
-Start all containers (Qdrant, RustFS, Langfuse DB/Redis/Server, Ollama, and RAG Agent):
-```bash
-docker compose up -d --build
-```
+If Qdrant, RustFS, Langfuse, or Ollama are already running on your host machine:
 
-### 3. Pull Ollama Embedding Model
-In another terminal, pull the `qwen3-embedding:8b` model into Ollama:
-```bash
-docker exec -it ollama-embedding-server ollama pull qwen3-embedding:8b
-```
+1. Update `.env` to point to `host.docker.internal`:
+   ```env
+   S3_ENDPOINT_URL=http://host.docker.internal:9100
+   QDRANT_HOST=host.docker.internal
+   QDRANT_PORT=6333
+   LANGFUSE_HOST=http://host.docker.internal:3000
+   OLLAMA_BASE_URL=http://host.docker.internal:11434
+   OPENAI_BASE_URL=https://api.deepseek.com/v1
+   OPENAI_API_KEY=your-deepseek-api-key
+   ```
 
-### 4. Seed GxP Documents & Run Ingestion
-Execute the seed script to upload sample GxP standard operating procedures (SOPs) into RustFS (`gxp-docs` bucket) and ingest them into Qdrant:
+2. Build and start **only the agent sandbox container**:
+   ```bash
+   docker compose up -d rag-agent
+   ```
+
+---
+
+### Mode B: Spin Up the Full Stack (Isolated Docker Sandbox)
+
+To launch all infrastructure services in Docker from scratch:
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Start all containers (Qdrant, RustFS, Langfuse DB/Redis/Server, Ollama, and RAG Agent):
+   ```bash
+   docker compose up -d --build
+   ```
+3. Pull the Ollama embedding model:
+   ```bash
+   docker exec -it ollama-embedding-server ollama pull qwen3-embedding:8b
+   ```
+
+---
+
+## 📄 Document Seeding & Ingestion
+
+Run the seed script to upload sample GxP standard operating procedures (SOPs) into RustFS (`gxp-docs` bucket) and ingest vectors into Qdrant:
 ```bash
 python scripts/seed_gxp_docs.py
 ```
