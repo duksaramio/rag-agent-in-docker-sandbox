@@ -5,8 +5,8 @@ An enterprise-grade **Pydantic AI Retrieval-Augmented Generation (RAG) agent** r
 - 🎯 **Qdrant Vector Database**: Vector storage and similarity search at `http://localhost:6333`
 - 📦 **RustFS / MinIO S3 Object Server**: High-performance S3-compatible document storage holding `gxp-docs` at `http://localhost:9100`
 - 🔍 **Langfuse**: LLM observability and tracing platform at `http://localhost:3000`
-- 🤖 **Ollama**: Local embedding model server running `qwen3-embedding:8b` at `http://localhost:11434`
-- ⚡ **Pydantic AI Agent**: DeepSeek model (`deepseek-chat` / `deepseek-v4-flash`) via OpenAI-compatible provider interface.
+- 🤖 **Ollama**: Local embedding model server running `qwen3-embedding:8b` at `http://localhost:11434` integrated via **Pydantic AI's native `Embedder`** (`pydantic_ai.embeddings.Embedder`)
+- ⚡ **Pydantic AI Agent**: DeepSeek model (`deepseek-chat` / `deepseek-v4-flash`) powered by **Pydantic AI v2.26.0+**.
 
 ---
 
@@ -125,7 +125,7 @@ curl -X POST http://localhost:8000/query \
 - Navigate to **[http://localhost:3000](http://localhost:3000)**.
 - Traces show full execution telemetry for:
   - Document ingestion & text chunking
-  - Local embedding calls to Ollama (`qwen3-embedding:8b`)
+  - Local embedding calls via Pydantic AI's native `Embedder` (`qwen3-embedding:8b`)
   - Qdrant similarity searches (`gxp_documents` collection)
   - S3 raw document fetches from RustFS
   - DeepSeek LLM reasoning & Pydantic AI tool invocations.
