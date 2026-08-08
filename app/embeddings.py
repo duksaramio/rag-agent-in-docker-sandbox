@@ -31,7 +31,7 @@ class EmbeddingService:
         """Generate embedding vector for a single string using Pydantic AI Embedder."""
         logger.info(f"Embedding query using Pydantic AI Embedder ({self.model_name})...")
         result = self.embedder.embed_query_sync(text)
-        return result.embeddings
+        return result.embeddings[0] if result.embeddings else []
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
